@@ -1,3 +1,4 @@
+# api/routers/uploads.py
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -66,14 +67,15 @@ async def upload_file(
         "size": upload.file_size,
         "extension": upload.file_extension,
         "status": upload.status,
-        "created_at": upload.created_at.isoformat()
+        "created_at": upload.created_at.isoformat(),
+        "pcap_id": upload.pcap_id
     }
 
 @router.get("/uploads")
 async def list_uploads(
     limit: int = 100,
     offset: int = 0,
-    status: str = None,
+    status: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
     """List all uploaded files with pagination"""
@@ -115,73 +117,73 @@ async def delete_upload(upload_id: int, db: Session = Depends(get_db)):
     
     return {"message": "Upload deleted successfully", "id": upload_id}
 
-@router.get("/analysis/{upload_id}")
-async def get_analysis(upload_id: int, db: Session = Depends(get_db)):
-    """Get analysis results for an upload"""
+# @router.get("/analysis/{upload_id}")
+# async def get_analysis(upload_id: int, db: Session = Depends(get_db)):
+#     """Get analysis results for an upload"""
     
-    upload_service = UploadService(db)
-    upload = upload_service.get_upload_by_id(upload_id)
+#     upload_service = UploadService(db)
+#     upload = upload_service.get_upload_by_id(upload_id)
     
-    if not upload:
-        raise HTTPException(status_code=404, detail="Upload not found")
+#     if not upload:
+#         raise HTTPException(status_code=404, detail="Upload not found")
     
-    # Check if we have stored analysis results
-    analysis_results = upload_service.get_analysis_results(upload_id)
+#     # Check if we have stored analysis results
+#     analysis_results = upload_service.get_analysis_results(upload_id)
     
-    if analysis_results:
-        return {
-            "id": upload_id,
-            "uuid": str(upload.uuid),
-            "filename": upload.original_filename,
-            "status": upload.status,
-            "file_info": {
-                "size": upload.file_size,
-                "extension": upload.file_extension,
-                "created_at": upload.created_at.isoformat(),
-                "file_path": upload.file_path
-            },
-            **analysis_results
-        }
+#     if analysis_results:
+#         return {
+#             "id": upload_id,
+#             "uuid": str(upload.uuid),
+#             "filename": upload.original_filename,
+#             "status": upload.status,
+#             "file_info": {
+#                 "size": upload.file_size,
+#                 "extension": upload.file_extension,
+#                 "created_at": upload.created_at.isoformat(),
+#                 "file_path": upload.file_path
+#             },
+#             **analysis_results
+#         }
     
-    # Generate and save placeholder analysis (for now)
-    placeholder_analysis = {
-        "summary": {
-            "total_packets": 1234,
-            "devices_found": 5,
-            "security_score": 85,
-            "analysis_time": "2.3s"
-        },
-        "message": "Analysis complete (placeholder data from PostgreSQL)"
-    }
+#     # Generate and save placeholder analysis (for now)
+#     placeholder_analysis = {
+#         "summary": {
+#             "total_packets": 1234,
+#             "devices_found": 5,
+#             "security_score": 85,
+#             "analysis_time": "2.3s"
+#         },
+#         "message": "Analysis complete (placeholder data from PostgreSQL)"
+#     }
     
-    # Save placeholder analysis to database
-    upload_service.save_analysis_results(upload_id, placeholder_analysis)
+#     # Save placeholder analysis to database
+#     upload_service.save_analysis_results(upload_id, placeholder_analysis)
     
-    return {
-        "id": upload_id,
-        "uuid": str(upload.uuid),
-        "filename": upload.original_filename,
-        "status": "completed",
-        "file_info": {
-            "size": upload.file_size,
-            "extension": upload.file_extension,
-            "created_at": upload.created_at.isoformat(),
-            "file_path": upload.file_path
-        },
-        **placeholder_analysis
-    }
+#     return {
+#         "id": upload_id,
+#         "uuid": str(upload.uuid),
+#         "filename": upload.original_filename,
+#         "status": "completed",
+#         "file_info": {
+#             "size": upload.file_size,
+#             "extension": upload.file_extension,
+#             "created_at": upload.created_at.isoformat(),
+#             "file_path": upload.file_path
+#         },
+#         **placeholder_analysis
+#     }
 
-@router.get("/stats")
-async def get_storage_stats(db: Session = Depends(get_db)):
-    """Get storage and upload statistics"""
+# @router.get("/stats")
+# async def get_storage_stats(db: Session = Depends(get_db)):
+#     """Get storage and upload statistics"""
     
-    upload_service = UploadService(db)
-    stats = upload_service.get_storage_stats()
+#     upload_service = UploadService(db)
+#     stats = upload_service.get_storage_stats()
     
-    return {
-        "message": "Storage statistics",
-        **stats
-    }
+#     return {
+#         "message": "Storage statistics",
+#         **stats
+#     }
 
 @router.get("/search")
 async def search_uploads(

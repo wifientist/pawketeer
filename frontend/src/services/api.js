@@ -1,3 +1,4 @@
+// src/services/api.js
 import config from '../config/config';
 
 class ApiService {
@@ -8,97 +9,57 @@ class ApiService {
 
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;
-    
-    console.log(`API Request: ${options.method || 'GET'} ${url}`); // Debug log
-    
     const defaultOptions = {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
+      headers: { 'Content-Type': 'application/json', ...options.headers },
       ...options,
     };
+    if (options.body instanceof FormData) delete defaultOptions.headers['Content-Type'];
 
-    // Remove Content-Type header for FormData
-    if (options.body instanceof FormData) {
-      delete defaultOptions.headers['Content-Type'];
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+    const res = await fetch(url, { ...defaultOptions, signal: controller.signal }).catch((e)=>{throw e});
+    clearTimeout(timeoutId);
+
+    let data = null;
+    try { data = await res.json(); } catch { /* empty 204 or plaintext */ }
+
+    if (!res.ok) {
+      const detail = data?.detail || `HTTP ${res.status} ${res.statusText}`;
+      throw new Error(detail);
     }
-
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), this.timeout);
-      
-      const response = await fetch(url, {
-        ...defaultOptions,
-        signal: controller.signal,
-      });
-      
-      clearTimeout(timeoutId);
-      
-      console.log(`API Response: ${response.status} ${response.statusText}`); // Debug log
-      
-      if (!response.ok) {
-        let errorData = {};
-        try {
-          errorData = await response.json();
-        } catch (e) {
-          errorData = { detail: `HTTP ${response.status}: ${response.statusText}` };
-        }
-        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log(`API Data:`, data); // Debug log
-      return data;
-    } catch (error) {
-      console.error(`API Error for ${url}:`, error); // Debug log
-      
-      if (error.name === 'AbortError') {
-        throw new Error('Request timeout');
-      }
-      
-      if (error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
-        throw new Error('Cannot connect to server. Is it running?');
-      }
-      
-      throw error;
-    }
+    return data;
   }
 
-  // Health check with simpler endpoint
-  async healthCheck() {
-    return this.request('/health');
-  }
+  getConfig() { return this.request('/config'); }
 
-  // Upload file
-  async uploadFile(file) {
+  // ---- existing helpers ----
+  healthCheck() { return this.request('/health'); }
+  uploadFile(file) {
     const formData = new FormData();
     formData.append('file', file);
+    return this.request('/upload', { method: 'POST', body: formData });
+  }
+  getUploads() { return this.request('/uploads'); }
+  getUpload(id) { return this.request(`/uploads/${id}`); }
 
-    return this.request('/api/upload', {
-      method: 'POST',
-      body: formData,
-    });
+  // ---- PCAP related ----
+  getPcapsList() {
+    return this.request('/pcaps/list');
+  }
+  getPcapCombo(pcapId, { latestOnly = false } = {}) {
+    const q = latestOnly ? '?latest_only=true' : '';
+    return this.request(`/pcaps/${pcapId}/combo${q}`);
+  }
+  startAnalysisByUpload(uploadId) {
+    return this.request(`/uploads/${uploadId}/analyze`, { method: 'POST' });
+  }
+  startAnalysisByPcap(pcapId) {
+    return this.request(`/pcaps/${pcapId}/analyze`, { method: 'POST' });
   }
 
-  // Get uploads list
-  async getUploads() {
-    return this.request('/api/uploads');
-  }
-
-  // Get specific upload
-  async getUpload(uploadId) {
-    return this.request(`/api/uploads/${uploadId}`);
-  }
-
-  // Get analysis results
-  async getAnalysis(uploadId) {
-    return this.request(`/api/analysis/${uploadId}`);
-  }
-
-  // Get server config
-  async getConfig() {
-    return this.request('/config');
+  // Poll latest analysis for a PCAP
+  getLatestPcapAnalysis(pcapId) {
+    return this.request(`/pcaps/${pcapId}/analysis/latest`);
   }
 }
 

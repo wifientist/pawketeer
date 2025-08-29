@@ -1,6 +1,8 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text, Index
+from sqlalchemy import Column, Integer, ForeignKey, String, DateTime, Boolean, Text, Index
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
+
 from app.core.database import Base
 from datetime import datetime
 import uuid
@@ -36,6 +38,10 @@ class Upload(Base):
     processing_started_at = Column(DateTime(timezone=True), nullable=True)
     processing_completed_at = Column(DateTime(timezone=True), nullable=True)
     error_message = Column(Text, nullable=True)
+
+    # PCAP analysis relationship
+    pcap_id = Column(Integer, ForeignKey("pcap_files.id"), nullable=True)
+    pcap = relationship("PcapFile", back_populates="upload", uselist=False)
     
     # Indexes for better performance
     __table_args__ = (
@@ -60,4 +66,8 @@ class Upload(Base):
             "processing_started_at": self.processing_started_at.isoformat() if self.processing_started_at else None,
             "processing_completed_at": self.processing_completed_at.isoformat() if self.processing_completed_at else None,
             "error_message": self.error_message,
+            "analysis_results": self.analysis_results,
+            "upload_ip": self.upload_ip,
+            "user_agent": self.user_agent,
+            "pcap_id": self.pcap_id
         }

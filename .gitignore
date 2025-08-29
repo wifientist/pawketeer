@@ -31,7 +31,7 @@ venv.bak/
 backend/.venv/
 
 # Uploads
-backend/uploads/
+backend/uploads/*
 
 # Node.js
 node_modules/

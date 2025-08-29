@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from app.models.upload import Upload
+from app.models.pcap import PcapFile, PcapAnalysis
 from app.core.config import settings
 import os
 import uuid
@@ -23,66 +24,124 @@ class UploadService:
         os.makedirs(settings.upload_directory, exist_ok=True)
         print(f"📁 Upload directory: {os.path.abspath(settings.upload_directory)}")
     
-    def create_upload(self, filename: str, file_size: int, file_content: bytes, 
-                     client_ip: str = None, user_agent: str = None) -> Upload:
-        """Create a new upload record and save file"""
-        
+    def create_upload(
+        self,
+        filename: str,
+        file_size: int,
+        file_content: bytes,
+        client_ip: str = None,
+        user_agent: str = None,
+        reuse_existing_upload: bool = False,  # set True if you want to just return prior Upload on duplicates
+    ) -> Upload:
+        """Create Upload, ensure/attach PcapFile, and store file on disk by SHA-256."""
+
         self._ensure_upload_directory()
-        
-        # Calculate file hash for duplicate detection
+
+        # 1) Hash content
         file_hash = self._calculate_file_hash(file_content)
-        
-        # Check for existing file with same hash
-        existing = self.db.query(Upload).filter(Upload.file_hash == file_hash).first()
-        if existing:
-            print(f"🔄 Found duplicate file: {existing.original_filename}")
-            return existing
-        
-        # Extract file extension
-        file_extension = None
-        if filename:
-            file_extension = "." + filename.split(".")[-1].lower()
-        
-        # Generate unique filename to avoid conflicts
-        unique_id = str(uuid.uuid4())[:8]
-        safe_filename = f"{unique_id}_{filename}" if filename else f"{unique_id}.pcap"
-        
-        # Save file to disk
-        file_path = os.path.join(settings.upload_directory, safe_filename)
-        try:
-            with open(file_path, "wb") as f:
-                f.write(file_content)
-            print(f"💾 File saved: {file_path} ({file_size} bytes)")
-        except Exception as e:
-            print(f"❌ Error saving file: {e}")
-            raise
-        
-        # Create database record
+        file_extension = self._safe_ext(filename)
+
+        # 2) If we've seen this hash before, reuse PcapFile (via any prior Upload)
+        prior_upload = (
+            self.db.query(Upload)
+            .filter(Upload.file_hash == file_hash)
+            .order_by(Upload.created_at.desc())
+            .first()
+        )
+
+        if prior_upload:
+            # Option A: return the existing Upload and skip new row
+            if reuse_existing_upload:
+                return prior_upload
+
+            # Option B (default): create a NEW Upload row that points to the SAME file/pcap
+            pcap_id = getattr(prior_upload, "pcap_id", None)
+            file_path = prior_upload.file_path
+
+            # If for any reason the prior upload wasn't linked yet, create PcapFile now.
+            if not pcap_id:
+                pcap = PcapFile(
+                    filename=filename or prior_upload.original_filename or "capture.pcap",
+                    file_path=file_path,
+                    size_bytes=prior_upload.file_size or file_size,
+                    uploaded_at=datetime.utcnow(),
+                )
+                self.db.add(pcap)
+                self.db.commit()
+                self.db.refresh(pcap)
+                pcap_id = pcap.id
+
+            upload = Upload(
+                filename=prior_upload.filename,            # keep stored name
+                original_filename=filename or prior_upload.original_filename,
+                file_path=file_path,
+                file_size=file_size,
+                file_extension=file_extension or prior_upload.file_extension,
+                file_hash=file_hash,
+                status="uploaded",
+                upload_ip=client_ip,
+                user_agent=user_agent,
+                pcap_id=pcap_id,
+            )
+            self.db.add(upload)
+            self.db.commit()
+            self.db.refresh(upload)
+            return upload
+
+        # 3) New file: write to disk using a stable hash-based path
+        file_path = self._derive_hashed_path(filename or "capture.pcap", file_hash)
+        if not os.path.exists(file_path):
+            try:
+                with open(file_path, "wb") as f:
+                    f.write(file_content)
+                print(f"💾 File saved: {file_path} ({file_size} bytes)")
+            except Exception as e:
+                print(f"❌ Error saving file: {e}")
+                raise
+
+        # 4) Create PcapFile (canonical record for analysis)
+        pcap = PcapFile(
+            filename=filename or os.path.basename(file_path),
+            file_path=file_path,
+            size_bytes=file_size,
+            uploaded_at=datetime.utcnow(),
+        )
+        self.db.add(pcap)
+        self.db.commit()
+        self.db.refresh(pcap)
+
+        # 5) Create Upload linked to that PcapFile
+        # Keep your current "unique_id_prefix + original name" style if you like;
+        # here we just mirror the original filename for clarity.
+        unique_prefix = str(uuid.uuid4())[:8]
+        stored_filename = f"{unique_prefix}_{filename}" if filename else f"{unique_prefix}.pcap"
+
         upload = Upload(
-            filename=safe_filename,
-            original_filename=filename,
+            filename=stored_filename,
+            original_filename=filename or stored_filename,
             file_path=file_path,
             file_size=file_size,
             file_extension=file_extension,
             file_hash=file_hash,
             status="uploaded",
             upload_ip=client_ip,
-            user_agent=user_agent
+            user_agent=user_agent,
+            pcap_id=pcap.id,
         )
-        
+
         try:
             self.db.add(upload)
             self.db.commit()
             self.db.refresh(upload)
-            print(f"✅ Database record created: ID={upload.id}, UUID={upload.uuid}")
+            print(f"✅ DB upload created: ID={upload.id}, UUID={upload.uuid}, PCAP_ID={upload.pcap_id}")
         except Exception as e:
             print(f"❌ Database error: {e}")
-            # Clean up file if database insert fails
-            if os.path.exists(file_path):
-                os.remove(file_path)
+            # Optional: do NOT delete the hashed file, since others might reference it
+            # If you want cleanup on failure, ensure no one else references.
             raise
-        
+
         return upload
+
     
     def get_upload_by_id(self, upload_id: int) -> Optional[Upload]:
         """Get upload by ID"""
@@ -217,3 +276,17 @@ class UploadService:
         p = math.pow(1024, i)
         s = round(bytes_value / p, 2)
         return f"{s} {sizes[i]}"
+
+    def _safe_ext(self, filename: str) -> str:
+        if not filename or "." not in filename:
+            return ""
+        return "." + filename.rsplit(".", 1)[1].lower()
+
+    def _derive_hashed_path(self, filename: str, sha256: str) -> str:
+        # organize by hash prefix; keep extension for convenience
+        ext = self._safe_ext(filename)
+        sub1, sub2 = sha256[:2], sha256[2:4]
+        dirpath = os.path.join(settings.upload_directory, sub1, sub2)
+        os.makedirs(dirpath, exist_ok=True)
+        return os.path.join(dirpath, f"{sha256}{ext or '.pcap'}")
+

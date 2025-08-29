@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.routes import router
+#from app.api.routes import router
+from app.api.routers import api
 from app.core.config import settings
 from app.core.database import create_tables, test_connection
 
@@ -15,7 +16,7 @@ else:
 
 app = FastAPI(
     title=settings.app_name,
-    description="WiFi packet analysis with PostgreSQL database storage",
+    description="WiFiFoFum packet analysis with PostgreSQL database storage",
     version=settings.app_version,
     debug=settings.debug
 )
@@ -30,16 +31,8 @@ app.add_middleware(
 )
 
 # Include routes
-app.include_router(router, prefix="/api")
+app.include_router(api, prefix="")
 
-@app.get("/")
-async def root():
-    return {
-        "message": f"{settings.app_name} API", 
-        "version": settings.app_version,
-        "debug": settings.debug,
-        "database": "PostgreSQL (Connected)" if test_connection() else "PostgreSQL (Disconnected)"
-    }
 
 @app.get("/health")
 async def health():

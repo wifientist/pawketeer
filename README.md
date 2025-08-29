@@ -27,7 +27,7 @@ A simple web application for uploading and analyzing WiFi packet capture files.
    python main.py
    ```
 
-   The API will be available at http://localhost:8000
+   The API will be available at http://localhost:8000/docs
 
 ### Frontend Setup
 
@@ -62,10 +62,11 @@ This is a minimal working application with:
 - ✅ Basic API endpoints
 - ✅ Simple React frontend
 - ✅ PSQL data storage
-- ❌ No actual packet analysis yet (placeholder data only)
+- ❌ Only basic packet analysis so far
 
 ## Next Steps
 
 - Implement actual packet parsing
+- Implement additional specialized agents
 - Add real analysis features
 - Improve UI/UX
