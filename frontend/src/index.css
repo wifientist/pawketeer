@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+/* Design tokens (match your current palette/layout) */
+@theme {
+  --container-max: 1200px;
+  --radius: 8px;
+
+  --header-bg: #282c34;
+  --blue-500: #007bff;
+  --blue-600: #0056b3;
+
+  --success: #28a745;
+  --error: #dc3545;
+  --warning: #ffc107;
+  --dark: #212529;
+}

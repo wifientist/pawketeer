@@ -1,4 +1,3 @@
-// AnalyzeCard.jsx
 import { useState } from "react";
 
 export default function AnalyzeCard({ pcapId, filename }) {
@@ -12,7 +11,6 @@ export default function AnalyzeCard({ pcapId, filename }) {
     setSummary(null);
     try {
       await fetch(`/pcaps/${pcapId}/analyze`, { method: "POST" });
-      // simple poll for demo; you can switch to websockets later
       const poll = setInterval(async () => {
         const r = await fetch(`/pcaps/${pcapId}/analysis/latest`);
         if (r.ok) {
@@ -32,36 +30,65 @@ export default function AnalyzeCard({ pcapId, filename }) {
   }
 
   return (
-    <div className="card" style={{ marginBottom: "1rem" }}>
-      <header className="card-header">
-        <p className="card-header-title">{filename}</p>
-      </header>
-      <div className="card-content">
-        <div className="content">
-          <button className={`button is-link ${loading ? "is-loading" : ""}`} onClick={start}>
-            Run Initial Analysis
-          </button>
-          {status && <p style={{ marginTop: 10 }}>Status: <strong>{status}</strong></p>}
-          {summary && summary.status === "ok" && (
-            <table className="table is-fullwidth is-striped" style={{ marginTop: 10 }}>
-              <tbody>
-                <tr><th>Total packets</th><td>{summary.total_packets}</td></tr>
-                <tr><th>Unique devices</th><td>{summary.unique_devices}</td></tr>
-                <tr><th>APs</th><td>{summary.unique_aps}</td></tr>
-                <tr><th>Clients</th><td>{summary.unique_clients}</td></tr>
-                <tr><th>SSIDs</th><td>{summary.ssid_count}</td></tr>
-                <tr><th>Duration (ms)</th><td>{summary.duration_ms}</td></tr>
-              </tbody>
-            </table>
-          )}
-          {summary && summary.status === "error" && (
-            <article className="message is-danger" style={{ marginTop: 10 }}>
-              <div className="message-body">
-                <strong>Error:</strong> {summary.error}
-              </div>
-            </article>
-          )}
-        </div>
+    <div className="mb-4 rounded-lg border border-gray-200 bg-white shadow">
+      <div className="border-b border-gray-200 px-4 py-3">
+        <p className="m-0 text-base font-semibold text-gray-800">{filename}</p>
+      </div>
+
+      <div className="px-4 py-4">
+        <button
+          onClick={start}
+          disabled={loading}
+          className={[
+            "inline-flex items-center rounded-md px-4 py-2 font-medium text-white transition",
+            loading ? "bg-gray-300 cursor-not-allowed" : "bg-[--blue-500] hover:bg-[--blue-600]",
+          ].join(" ")}
+        >
+          {loading ? "Analyzing..." : "Run Initial Analysis"}
+        </button>
+
+        {status && (
+          <p className="mt-3">
+            Status: <strong>{status}</strong>
+          </p>
+        )}
+
+        {summary && summary.status === "ok" && (
+          <table className="mt-3 w-full table-auto overflow-hidden rounded-md border border-gray-200 text-sm">
+            <tbody>
+              <tr className="odd:bg-white even:bg-gray-50">
+                <th className="w-1/2 border-b border-gray-200 px-3 py-2 text-left">Total packets</th>
+                <td className="border-b border-gray-200 px-3 py-2">{summary.total_packets}</td>
+              </tr>
+              <tr className="odd:bg-white even:bg-gray-50">
+                <th className="border-b border-gray-200 px-3 py-2 text-left">Unique devices</th>
+                <td className="border-b border-gray-200 px-3 py-2">{summary.unique_devices}</td>
+              </tr>
+              <tr className="odd:bg-white even:bg-gray-50">
+                <th className="border-b border-gray-200 px-3 py-2 text-left">APs</th>
+                <td className="border-b border-gray-200 px-3 py-2">{summary.unique_aps}</td>
+              </tr>
+              <tr className="odd:bg-white even:bg-gray-50">
+                <th className="border-b border-gray-200 px-3 py-2 text-left">Clients</th>
+                <td className="border-b border-gray-200 px-3 py-2">{summary.unique_clients}</td>
+              </tr>
+              <tr className="odd:bg-white even:bg-gray-50">
+                <th className="border-b border-gray-200 px-3 py-2 text-left">SSIDs</th>
+                <td className="border-b border-gray-200 px-3 py-2">{summary.ssid_count}</td>
+              </tr>
+              <tr className="odd:bg-white even:bg-gray-50">
+                <th className="border-b border-gray-200 px-3 py-2 text-left">Duration (ms)</th>
+                <td className="border-b border-gray-200 px-3 py-2">{summary.duration_ms}</td>
+              </tr>
+            </tbody>
+          </table>
+        )}
+
+        {summary && summary.status === "error" && (
+          <div className="mt-3 rounded-md border border-red-200 bg-red-100 p-3 text-sm text-red-700">
+            <strong>Error:</strong> {summary.error}
+          </div>
+        )}
       </div>
     </div>
   );

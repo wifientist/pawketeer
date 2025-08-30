@@ -1,5 +1,8 @@
-// src/services/api.js
-import config from '../config/config';
+import config from "../config/config";
+
+// join baseURL + endpoint safely (avoid double slashes)
+const join = (base, path) =>
+  base.replace(/\/+$/, "") + (path.startsWith("/") ? "" : "/") + path;
 
 class ApiService {
   constructor() {
@@ -8,56 +11,91 @@ class ApiService {
   }
 
   async request(endpoint, options = {}) {
-    const url = `${this.baseURL}${endpoint}`;
-    const defaultOptions = {
-      headers: { 'Content-Type': 'application/json', ...options.headers },
-      ...options,
-    };
-    if (options.body instanceof FormData) delete defaultOptions.headers['Content-Type'];
+    const url = join(this.baseURL, endpoint);
+
+    // Build headers (don’t set Content-Type for FormData)
+    const headers = { "Content-Type": "application/json", ...options.headers };
+    const isFormData = options.body instanceof FormData;
+    if (isFormData) delete headers["Content-Type"];
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.timeout);
-    const res = await fetch(url, { ...defaultOptions, signal: controller.signal }).catch((e)=>{throw e});
-    clearTimeout(timeoutId);
 
+    let res;
+    try {
+      res = await fetch(url, {
+        ...options,
+        headers,
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
+
+    // Try JSON, fall back to text if needed
     let data = null;
-    try { data = await res.json(); } catch { /* empty 204 or plaintext */ }
+    const ct = res.headers.get("content-type") || "";
+    if (ct.includes("application/json")) {
+      try {
+        data = await res.json();
+      } catch {
+        data = null;
+      }
+    } else {
+      try {
+        data = await res.text();
+      } catch {
+        data = null;
+      }
+    }
 
     if (!res.ok) {
-      const detail = data?.detail || `HTTP ${res.status} ${res.statusText}`;
+      // Prefer structured error if present
+      const detail =
+        (data && data.detail) ||
+        (typeof data === "string" && data) ||
+        `HTTP ${res.status} ${res.statusText}`;
       throw new Error(detail);
     }
+
     return data;
   }
 
-  getConfig() { return this.request('/config'); }
+  // ---- endpoints ----
+  getConfig() {
+    return this.request("/config");
+  }
+  healthCheck() {
+    return this.request("/health");
+  }
 
-  // ---- existing helpers ----
-  healthCheck() { return this.request('/health'); }
   uploadFile(file) {
     const formData = new FormData();
-    formData.append('file', file);
-    return this.request('/upload', { method: 'POST', body: formData });
+    formData.append("file", file);
+    return this.request("/upload", { method: "POST", body: formData });
   }
-  getUploads() { return this.request('/uploads'); }
-  getUpload(id) { return this.request(`/uploads/${id}`); }
 
-  // ---- PCAP related ----
+  getUploads() {
+    return this.request("/uploads");
+  }
+  getUpload(id) {
+    return this.request(`/uploads/${id}`);
+  }
+
+  // PCAP
   getPcapsList() {
-    return this.request('/pcaps/list');
+    return this.request("/pcaps/list");
   }
   getPcapCombo(pcapId, { latestOnly = false } = {}) {
-    const q = latestOnly ? '?latest_only=true' : '';
+    const q = latestOnly ? "?latest_only=true" : "";
     return this.request(`/pcaps/${pcapId}/combo${q}`);
   }
   startAnalysisByUpload(uploadId) {
-    return this.request(`/uploads/${uploadId}/analyze`, { method: 'POST' });
+    return this.request(`/uploads/${uploadId}/analyze`, { method: "POST" });
   }
   startAnalysisByPcap(pcapId) {
-    return this.request(`/pcaps/${pcapId}/analyze`, { method: 'POST' });
+    return this.request(`/pcaps/${pcapId}/analyze`, { method: "POST" });
   }
-
-  // Poll latest analysis for a PCAP
   getLatestPcapAnalysis(pcapId) {
     return this.request(`/pcaps/${pcapId}/analysis/latest`);
   }
