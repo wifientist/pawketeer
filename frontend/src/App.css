@@ -1,4 +1,4 @@
-
+/*
 .App {
   text-align: center;
   max-width: 1200px;
@@ -72,7 +72,7 @@
   gap: 20px;
 }
 
-/* Enhanced File Upload Styles */
+/* Enhanced File Upload Styles 
 .file-upload h2 {
   margin-top: 0;
   color: #333;
@@ -146,7 +146,7 @@
   border: 1px solid #f5c6cb;
 }
 
-/* Enhanced Uploads List Styles */
+/* Enhanced Uploads List Styles 
 .uploads-list {
   background: white;
   border: 1px solid #ddd;
@@ -239,7 +239,7 @@
   background-color: #dc3545;
 }
 
-/* Enhanced Analysis View Styles */
+/* Enhanced Analysis View Styles 
 .analysis-panel {
   background: white;
   border: 1px solid #ddd;
@@ -352,7 +352,7 @@
   color: #0c5460;
 }
 
-/* Responsive Design */
+/* Responsive Design 
 @media (max-width: 768px) {
   .content-section {
     grid-template-columns: 1fr;
@@ -382,7 +382,7 @@
   }
 }
 
-/* Loading Animation */
+/* Loading Animation 
 .loading {
   position: relative;
 }

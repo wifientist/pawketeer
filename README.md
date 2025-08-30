@@ -1,49 +1,64 @@
-# WiFiFoFum Packet Analyzer
+# Pawketeer Wi-Fi Packet Analyzer
 
-A simple web application for uploading and analyzing WiFi packet capture files.
+A web application for uploading and analyzing Wi-Fi packet capture files (.pcap, .pcapng, .cap).
 
-## Current Status
+## 🚀 Current Status
 
-This is a minimal working application with:
-- ✅ File upload functionality
-- ✅ Basic API endpoints
-- ✅ Simple React frontend
-- ✅ PSQL data storage
-- ❌ Only basic packet analysis so far
+This is a minimal but working application with:
+✅ File upload functionality
+✅ Vite + React + Tailwind frontend
+✅ FastAPI backend with API endpoints
+✅ PostgreSQL data storage (via Podman)
+❌ Only basic packet analysis so far
 
-## Next Steps
+## 🛠️ Next Steps
 
-- Implement actual packet parsing
-- Implement additional specialized agents
-- Add real analysis features
-- Improve UI/UX
+Implement actual packet parsing logic
+Add specialized analysis agents
+Extend real-world Wi-Fi analysis features
+Enhance UI/UX with additional Tailwind components
+Provide authorization mechanism
 
-## Getting Started
+## ⚙️ Getting Started
 
-### Backend Setup
+### Backend Setup (FastAPI)
 
 1. Navigate to the backend directory:
-   ```bash
+   '''bash
    cd backend
-   ```
-
-2. Create a virtual environment:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
-
+   '''
+2. Create and activate a virtual environment:
+   '''bash
+   python -m venv .venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   '''
 3. Install dependencies:
-   ```bash
+   '''bash
    pip install -r requirements.txt
-   ```
-
+   '''
 4. Start the FastAPI server:
-   ```bash
-   python main.py
-   ```
+   '''bash
+   uvicorn main:app --reload
+   '''
+5. API available at → http://localhost:8000/docs
 
-   The API will be available at http://localhost:8000/docs
+### Database Setup (PostgreSQL via Podman)
+
+1. Start the database container:
+   '''bash
+   podman-compose up -d postgres
+   '''
+2. Default connection details (configure in .env as needed):
+   '''bash
+   POSTGRES_DB=wifi_analyzer
+   POSTGRES_USER=wifi_user
+   POSTGRES_PASSWORD=wifi_password
+   POSTGRES_PORT=5432
+   '''
+3. Confirm the container is healthy:
+   '''bash
+   podman ps
+   '''
 
 ### Frontend Setup
 
@@ -57,9 +72,9 @@ This is a minimal working application with:
    npm install
    ```
 
-3. Start the React development server:
+3. Start the Vite development server:
    ```bash
-   npm start
+   npm run dev
    ```
 
    The web app will be available at http://localhost:3000

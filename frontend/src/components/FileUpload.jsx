@@ -78,7 +78,6 @@ function FileUpload({ onUploadSuccess }) {
 
   return (
     <div className="file-upload">
-      <h2 className="text-xl font-semibold text-gray-800">Upload Packet Capture</h2>
 
       <div className="mt-3 rounded-md bg-gray-100 p-4 text-sm text-gray-700">
         <p>Supported formats: {allowedExtensions.join(", ")}</p>

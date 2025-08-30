@@ -156,7 +156,7 @@ export default function AnalysisView({ upload }) {
           }
           title={!canAnalyze ? "PCAP not linked" : "Start analysis"}
           className={[
-            "rounded-md px-4 py-2 font-medium text-white transition",
+            "rounded-md px-4 py-2 font-medium text-gray transition",
             !canAnalyze ||
             polling ||
             (latest && ["pending", "running"].includes(latest.status))

@@ -16,7 +16,7 @@ else:
 
 app = FastAPI(
     title=settings.app_name,
-    description="WiFiFoFum packet analysis with PostgreSQL database storage",
+    description="Pawketeer Wi-Fi packet analysis with PostgreSQL database storage",
     version=settings.app_version,
     debug=settings.debug
 )

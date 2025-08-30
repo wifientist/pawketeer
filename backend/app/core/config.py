@@ -5,7 +5,7 @@ import os
 
 class Settings(BaseSettings):
     # App settings
-    app_name: str = "WiFi FoFum Analyzer"
+    app_name: str = "Wi-Fi Packet Analyzer"
     app_version: str = "0.1.0"
     debug: bool = True
     
