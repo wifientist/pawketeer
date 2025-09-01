@@ -40,6 +40,18 @@ services:
     networks:
       - wififofum_network
 
+  redis:
+    image: docker.io/library/redis:7-alpine
+    container_name: app_redis
+    restart: unless-stopped
+    ports:
+      - "6344:6379"
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+
 networks:
   wififofum_network:
     driver: bridge
@@ -49,3 +61,5 @@ volumes:
     driver: local
   pgadmin_data:
     driver: local
+  redis_data:
+

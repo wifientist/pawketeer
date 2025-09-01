@@ -10,7 +10,7 @@ function UploadsList({ uploads, onSelect, selectedId, onRefresh }) {
         </h3>
         {onRefresh && (
           <button
-            className="inline-flex items-center gap-1 rounded-md border border-[--blue-500] px-3 py-1 text-sm font-medium text-[--blue-500] hover:bg-[--blue-500] hover:text-white transition"
+            className="inline-flex items-center gap-1 rounded-md border border-blue-500 px-3 py-1 text-sm font-medium text-[--blue-500] hover:bg-blue-500 hover:text-white transition"
             onClick={onRefresh}
             title="Refresh"
           >

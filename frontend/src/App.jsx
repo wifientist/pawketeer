@@ -1,75 +1,104 @@
 // src/App.jsx
 import React, { useState } from "react";
 import "./App.css";
-import useServerHealth from "./hooks/useServerHealth";
+import { AuthProvider } from "./contexts/AuthContext";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
+import AdminDashboard from "./components/admin/AdminDashboard";
 import useUploads from "./hooks/useUploads";
 import AppHeader from "./components/AppHeader";
-import UploadsList from "./components/UploadsList";
 import AnalysisView from "./components/AnalysisView";
-import UploadModal from "./components/UploadModal";
+import UploadsModal from "./components/UploadsModal";
+import UploadBanner from "./components/UploadBanner";
 import BackgroundLogo from "./components/BackgroundLogo";
 
-
-export default function App() {
-  const { statusText, statusClass } = useServerHealth();
+function MainApp() {
   const {
     uploads, selectedUpload, setSelectedUpload, fetchUploads, onUploadSuccess,
   } = useUploads();
 
-  const [showUpload, setShowUpload] = useState(false);
+  const [showUploadsModal, setShowUploadsModal] = useState(false);
+  const [currentView, setCurrentView] = useState('main'); // 'main' or 'admin'
+
+  const handleAdminClick = () => {
+    setCurrentView(currentView === 'admin' ? 'main' : 'admin');
+  };
+
+  const handleBackToMain = () => {
+    setCurrentView('main');
+  };
+
+  if (currentView === 'admin') {
+    return (
+      <ProtectedRoute adminOnly>
+        <div className="max-w-[--container-max] mx-auto p-5">
+          <BackgroundLogo />
+          <AppHeader 
+            showAdminButton={true}
+            onAdminClick={handleBackToMain}
+          />
+          <AdminDashboard />
+        </div>
+      </ProtectedRoute>
+    );
+  }
 
   return (
-    <div className="max-w-[--container-max] mx-auto p-5">
-      <BackgroundLogo />
-      <AppHeader statusText={statusText} statusClass={statusClass} />
-      {/* Top actions */}
-      <div className="flex justify-center mb-4">
-        <button
-          className="btn primary"
-          onClick={() => setShowUpload(true)}
-          title="Upload a new PCAP"
-        >
-          ⬆️ Upload PCAP
-        </button>
-      </div>
+    <ProtectedRoute>
+      <div className="max-w-[--container-max] mx-auto p-5">
+        <BackgroundLogo />
+        
+        <AppHeader 
+          showAdminButton={true}
+          onAdminClick={handleAdminClick}
+        />
+        
+        {/* Upload Banner */}
+        <UploadBanner 
+          upload={selectedUpload}
+          onOpenModal={() => setShowUploadsModal(true)}
+        />
 
-      <main className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-5">
-        <div className="uploads-panel">
-          <UploadsList
-            uploads={uploads}
-            onSelect={setSelectedUpload}
-            selectedId={selectedUpload?.id}
-            onRefresh={fetchUploads}
-          />
-        </div>
-
-        <div className="analysis-panel">
+        {/* Full-width Analysis View */}
+        <main className="w-full">
           {selectedUpload ? (
             <AnalysisView upload={selectedUpload} />
           ) : (
-            <div className="placeholder text-center italic text-[#666] py-16">
-              Select an upload to view &amp; run analysis
+            <div className="placeholder text-center italic text-[#666] py-16 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+              <p className="text-lg mb-4">No upload selected</p>
+              <p className="text-sm">Click "Select or Upload PCAP" above to get started</p>
             </div>
           )}
-        </div>
-      </main>
+        </main>
 
-      {/* Modal */}
-      <UploadModal
-        open={showUpload}
-        onClose={() => setShowUpload(false)}
-        onUploadSuccess={onUploadSuccess}
-      />
+        {/* Uploads Modal */}
+        <UploadsModal
+          open={showUploadsModal}
+          onClose={() => setShowUploadsModal(false)}
+          uploads={uploads}
+          onSelect={setSelectedUpload}
+          selectedId={selectedUpload?.id}
+          onRefresh={fetchUploads}
+          onUploadSuccess={onUploadSuccess}
+        />
 
-      {/* Optional FAB */}
-      <button
-        className="fixed bottom-6 right-6 rounded-full shadow-lg px-5 py-3 bg-[--primary] text-white hover:opacity-90 md:hidden"
-        onClick={() => setShowUpload(true)}
-        title="Upload"
-        aria-label="Upload"
-      >
-        ⬆️
-      </button>
-    </div>
+        {/* Optional FAB for mobile */}
+        <button
+          className="fixed bottom-6 right-6 rounded-full shadow-lg px-5 py-3 bg-[--primary] text-white hover:opacity-90 md:hidden"
+          onClick={() => setShowUploadsModal(true)}
+          title="Manage Uploads"
+          aria-label="Manage Uploads"
+        >
+          📁
+        </button>
+      </div>
+    </ProtectedRoute>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <MainApp />
+    </AuthProvider>
   );
 }

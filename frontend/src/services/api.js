@@ -90,14 +90,107 @@ class ApiService {
     const q = latestOnly ? "?latest_only=true" : "";
     return this.request(`/pcaps/${pcapId}/combo${q}`);
   }
-  startAnalysisByUpload(uploadId) {
-    return this.request(`/uploads/${uploadId}/analyze`, { method: "POST" });
-  }
   startAnalysisByPcap(pcapId) {
     return this.request(`/pcaps/${pcapId}/analyze`, { method: "POST" });
   }
   getLatestPcapAnalysis(pcapId) {
     return this.request(`/pcaps/${pcapId}/analysis/latest`);
+  }
+
+  // Auth endpoints
+  requestAccess(email) {
+    return this.request("/auth/request-access", {
+      method: "POST",
+      body: JSON.stringify({ email })
+    });
+  }
+
+  requestOTP(email) {
+    return this.request("/auth/request-otp", {
+      method: "POST", 
+      body: JSON.stringify({ email })
+    });
+  }
+
+  verifyOTP(email, otp_code) {
+    return this.request("/auth/verify-otp", {
+      method: "POST",
+      body: JSON.stringify({ email, otp_code })
+    });
+  }
+
+  getMe() {
+    const token = localStorage.getItem('auth_token');
+    return this.request("/auth/me", {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  }
+
+  logout() {
+    const token = localStorage.getItem('auth_token');
+    return this.request("/auth/logout", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  }
+
+  // Admin endpoints
+  getAdminStats() {
+    const token = localStorage.getItem('auth_token');
+    return this.request("/admin/stats", {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  }
+
+  getPendingUsers(skip = 0, limit = 50) {
+    const token = localStorage.getItem('auth_token');
+    return this.request(`/admin/pending-users?skip=${skip}&limit=${limit}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  }
+
+  getAllUsers(statusFilter = null, skip = 0, limit = 50) {
+    const token = localStorage.getItem('auth_token');
+    const params = new URLSearchParams({ skip, limit });
+    if (statusFilter) params.append('status_filter', statusFilter);
+    
+    return this.request(`/admin/users?${params}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  }
+
+  approveUser(userId, notes = '') {
+    const token = localStorage.getItem('auth_token');
+    return this.request(`/admin/approve-user/${userId}`, {
+      method: "POST",
+      body: JSON.stringify({ notes }),
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  }
+
+  rejectUser(userId, notes = '') {
+    const token = localStorage.getItem('auth_token');
+    return this.request(`/admin/reject-user/${userId}`, {
+      method: "POST", 
+      body: JSON.stringify({ notes }),
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  }
+
+  makeUserAdmin(userId) {
+    const token = localStorage.getItem('auth_token');
+    return this.request(`/admin/make-admin/${userId}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  }
+
+  revokeAdminPrivileges(userId) {
+    const token = localStorage.getItem('auth_token');
+    return this.request(`/admin/revoke-admin/${userId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` }
+    });
   }
 }
 

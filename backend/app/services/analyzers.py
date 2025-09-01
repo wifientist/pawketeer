@@ -4,9 +4,16 @@ from time import time
 from scapy.layers.dot11 import (
     Dot11, Dot11Deauth, Dot11Disas, Dot11Beacon, Dot11ProbeReq, Dot11ProbeResp, Dot11Elt
 )
+from scapy.layers.eap import EAPOL
 from .agent_bus import Analyzer
 
 import string
+
+# Try to import WPA_key - it's optional and may not be available
+try:
+    from scapy.contrib.wpa_eapol import WPA_key
+except ImportError:
+    WPA_key = None
 
 PRINTABLE = set(bytes(string.printable, "ascii"))
 
@@ -154,3 +161,73 @@ class WeakSecurity(Analyzer):
     def finalize(self):
         weak = [a for a in self.aps.values() if a["security"] == "Open"]
         return {"aps": list(self.aps.values()), "weak_aps": weak}
+
+class HandshakePMKID(Analyzer):
+    def __init__(self):
+        self.handshakes = []
+        self._seen = set() 
+
+    def on_packet(self, pkt):
+        # WPA/WPA2 4-way handshakes are EAPOL-Key frames inside 802.11 data
+
+        if not (pkt.haslayer(Dot11) and pkt.haslayer(EAPOL)):
+            return
+        d11 = pkt[Dot11]
+        bssid = _addr_lower(getattr(d11, "addr2", None))
+        sta   = _addr_lower(getattr(d11, "addr1", None))
+        if not (bssid and sta):
+            return
+
+        msg_num = None
+        mic = None
+        replay = None
+        key_iv = None
+        anonce = None
+        snonce = None
+
+        # If contrib WPA_key is available, classify message (M1..M4) and pull fields
+        if WPA_key and pkt.haslayer(WPA_key):
+            key = pkt[WPA_key]
+            mic = getattr(key, "wpa_key_mic", None)
+            replay = getattr(key, "replay_counter", None)
+            key_iv = getattr(key, "key_iv", None)
+            # try to infer message by key_info bits
+            try:
+                ki = int(key.key_info)
+                install = (ki >> 6) & 1
+                ack     = (ki >> 7) & 1
+                micbit  = (ki >> 8) & 1
+                # heuristic mapping
+                if ack and not micbit and not install:
+                    msg_num = 1
+                elif micbit and not ack and not install:
+                    msg_num = 2
+                elif micbit and ack and install:
+                    msg_num = 3
+                elif micbit and not ack and not install:
+                    msg_num = 4
+            except Exception:
+                pass
+
+            # Nonces if present (naming differs by version)
+            anonce = getattr(key, "nonce", None) or getattr(key, "anonce", None)
+            snonce = getattr(key, "snonce", None)
+
+        sig = (bssid, sta, msg_num, mic, replay, key_iv)
+        if sig in self._seen:
+            return
+        self._seen.add(sig)
+
+        self.handshakes.append({
+            "bssid": bssid,
+            "sta": sta,
+            "message": msg_num,        # 1..4 when known
+            "mic": mic.hex() if isinstance(mic, (bytes, bytearray)) else mic,
+            "replay_counter": int(replay) if replay is not None else None,
+            "key_iv": key_iv.hex() if isinstance(key_iv, (bytes, bytearray)) else key_iv,
+            "anonce": anonce.hex() if isinstance(anonce, (bytes, bytearray)) else None,
+            "snonce": snonce.hex() if isinstance(snonce, (bytes, bytearray)) else None,
+        })
+
+    def finalize(self):
+        return {"handshakes": self.handshakes}

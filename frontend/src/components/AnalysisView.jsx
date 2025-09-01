@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
 import api from "../services/api";
 import config from "../config/config";
+import AnalysisInsights from "./analysis/AnalysisInsights";
 
 export default function AnalysisView({ upload }) {
   const [combo, setCombo] = useState(null); // { pcap, analyses: [...] }
@@ -8,6 +9,7 @@ export default function AnalysisView({ upload }) {
   const [polling, setPolling] = useState(false);
   const [error, setError] = useState(null);
   const pollRef = useRef(null);
+  const pollCountRef = useRef(0);
 
   const pcapId = upload?.pcap_id;
   const canAnalyze = Boolean(pcapId);
@@ -34,6 +36,7 @@ export default function AnalysisView({ upload }) {
       pollRef.current = null;
     }
     setPolling(false);
+    pollCountRef.current = 0;
   }
 
   async function fetchCombo(id) {
@@ -76,17 +79,23 @@ export default function AnalysisView({ upload }) {
     setPolling(true);
     pollRef.current = setInterval(async () => {
       try {
-        const data = await api.getPcapCombo(pcapId);
-        setCombo(data);
-        const latestStatus = data?.analyses?.[0]?.status;
+        // Use lightweight status check instead of full combo
+        const latestAnalysis = await api.getLatestPcapAnalysis(pcapId);
+        const latestStatus = latestAnalysis?.status;
+        
         if (latestStatus && ["ok", "error"].includes(latestStatus)) {
+          // Analysis finished - now fetch full combo and stop polling
+          const data = await api.getPcapCombo(pcapId);
+          setCombo(data);
           stopPoll();
         }
+        // Don't update combo during polling - just check status
       } catch (e) {
         setError(e.message);
         stopPoll();
       }
-    }, 1200);
+    }, Math.min(3000 + (pollCountRef.current * 1000), 10000)); // Backoff: 3s, 4s, 5s, ... up to 10s
+    pollCountRef.current++;
   }
 
   const StatusBadge = ({ s }) => {
@@ -109,44 +118,19 @@ export default function AnalysisView({ upload }) {
   };
 
   return (
-    <div className="analysis-view">
-      <h3 className="m-0 mb-3 border-b-2 border-[--blue-500] pb-2 text-xl font-semibold text-gray-800">
-        Analysis
-      </h3>
-
-      {/* PCAP File info */}
-      <section className="rounded-md bg-gray-50 p-4">
-        <h4 className="m-0 mb-3 text-sm font-semibold text-gray-700">File</h4>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 text-sm">
-          <div>
-            <strong>Original (upload):</strong> {upload?.filename}
-          </div>
-          <div>
-            <strong>PCAP ID:</strong> {pcapId ?? "—"}
-          </div>
-          <div>
-            <strong>Stored filename:</strong> {combo?.pcap?.filename ?? "—"}
-          </div>
-          <div>
-            <strong>Size:</strong>{" "}
-            {config.formatFileSize(
-              combo?.pcap?.size_bytes || upload?.file_size || 0
-            )}
-          </div>
-          <div>
-            <strong>Uploaded:</strong>{" "}
-            {combo?.pcap?.uploaded_at
-              ? new Date(combo.pcap.uploaded_at).toLocaleString()
-              : "—"}
-          </div>
-          <div className="flex items-center gap-2">
-            <strong>Latest status:</strong> <StatusBadge s={latest?.status} />
-          </div>
+    <div className="analysis-view w-full">
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="m-0 text-xl font-semibold text-gray-800">
+          Analysis Results
+        </h3>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-600">Latest status:</span>
+          <StatusBadge s={latest?.status} />
         </div>
-      </section>
+      </div>
 
       {/* Controls */}
-      <section className="mt-4 flex flex-wrap items-center gap-3">
+      <section className="mb-6 flex flex-wrap items-center gap-3">
         <button
           onClick={startAnalysis}
           disabled={
@@ -156,12 +140,12 @@ export default function AnalysisView({ upload }) {
           }
           title={!canAnalyze ? "PCAP not linked" : "Start analysis"}
           className={[
-            "rounded-md px-4 py-2 font-medium text-gray transition",
+            "rounded-md border px-4 py-2 font-medium transition",
             !canAnalyze ||
             polling ||
             (latest && ["pending", "running"].includes(latest.status))
-              ? "bg-gray-300 cursor-not-allowed"
-              : "bg-[--blue-500] hover:bg-[--blue-600]",
+              ? "border-gray-200 cursor-not-allowed"
+              : "border-gray-300 hover:bg-gray-200",
           ].join(" ")}
         >
           {polling ||
@@ -177,7 +161,7 @@ export default function AnalysisView({ upload }) {
             "rounded-md border px-4 py-2 font-medium transition",
             polling
               ? "cursor-not-allowed border-gray-200 text-gray-400"
-              : "border-gray-300 text-gray-800 hover:bg-gray-100",
+              : "border-gray-300 text-gray-800 hover:bg-gray-200",
           ].join(" ")}
         >
           Refresh Status
@@ -191,8 +175,8 @@ export default function AnalysisView({ upload }) {
       )}
 
       {/* Analyses list */}
-      <section className="mt-4">
-        <h4 className="m-0 mb-2 text-sm font-semibold text-gray-700">Runs</h4>
+      <section className="mb-6">
+        <h4 className="m-0 mb-4 text-lg font-semibold text-gray-700">Analysis Runs</h4>
         {!combo?.analyses?.length ? (
           <div className="italic text-gray-600">No analysis runs yet.</div>
         ) : (
@@ -235,7 +219,7 @@ export default function AnalysisView({ upload }) {
         )}
       </section>
 
-      {/* Selected run details */}
+      {/* Selected run details
       {selected && selected.status === "ok" && (
         <section className="mt-4">
           <h4 className="m-0 mb-2 text-sm font-semibold text-gray-700">
@@ -308,72 +292,12 @@ export default function AnalysisView({ upload }) {
           </div>
         </section>
       )}
+      */}
 
-      {/* More detailed view if available */}
-      {selected?.details && (
-        <section className="mt-4">
-          <h4 className="m-0 mb-2 text-sm font-semibold text-gray-700">
-            Specialized Findings
-          </h4>
-
-          {selected.details.DeauthDisassoc && (
-            <div className="mb-3 rounded-md border border-gray-200 bg-white p-4">
-              <h5 className="mb-2 text-sm font-semibold text-gray-800">
-                Deauth/Disassoc
-              </h5>
-              <div className="text-sm">
-                Deauth: {selected.details.DeauthDisassoc.total_deauth}
-              </div>
-              <div className="text-sm">
-                Disassoc: {selected.details.DeauthDisassoc.total_disassoc}
-              </div>
-            </div>
-          )}
-
-          {selected.details.EvilTwinHeuristic?.suspected_evil_twins?.length >
-            0 && (
-            <div className="mb-3 rounded-md border border-yellow-300 bg-yellow-50 p-4">
-              <h5 className="mb-2 text-sm font-semibold text-yellow-900">
-                Suspected Evil Twins
-              </h5>
-              <ul className="list-disc pl-5 text-sm">
-                {selected.details.EvilTwinHeuristic.suspected_evil_twins.map(
-                  (e, i) => (
-                    <li key={i}>
-                      {e.ssid} — {e.reason}
-                    </li>
-                  )
-                )}
-              </ul>
-            </div>
-          )}
-
-          {selected.details.ProbePrivacy && (
-            <div className="mb-3 rounded-md border border-gray-200 bg-white p-4">
-              <h5 className="mb-2 text-sm font-semibold text-gray-800">
-                Probe-Request Privacy
-              </h5>
-              <div className="text-sm">
-                Clients with large PNL:{" "}
-                {selected.details.ProbePrivacy.clients_with_large_pnl.length}
-              </div>
-            </div>
-          )}
-
-          {selected.details.WeakSecurity?.weak_aps?.length > 0 && (
-            <div className="mb-3 rounded-md border border-red-200 bg-red-50 p-4">
-              <h5 className="mb-2 text-sm font-semibold text-red-900">
-                Weak APs
-              </h5>
-              <ul className="list-disc pl-5 text-sm">
-                {selected.details.WeakSecurity.weak_aps.slice(0, 5).map((ap, i) => (
-                  <li key={i}>
-                    {ap.ssid || "(hidden)"} — {ap.bssid}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+      {/* Comprehensive Analysis Insights */}
+      {selected && (
+        <section className="mt-8">
+          <AnalysisInsights analysis={selected} />
         </section>
       )}
 

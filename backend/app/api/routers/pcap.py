@@ -39,7 +39,7 @@ def _run_analysis(analysis_id: int):
         analysis.error = None
         db.commit()
 
-        result = analyze_pcap(pcap.file_path)  # <- your scapy-based analyzer
+        result = analyze_pcap(pcap.file_path)  # <- enhanced smart analyzer
 
         analysis.total_packets   = result.get("total_packets", 0)
         analysis.unique_devices  = result.get("unique_devices", 0)
@@ -48,10 +48,19 @@ def _run_analysis(analysis_id: int):
         analysis.ssid_count      = result.get("ssid_count", 0)
         analysis.duration_ms     = result.get("duration_ms", 0.0)
         analysis.status          = "ok"
+        
+        # Enhanced data from smart analysis
         analysis.frame_mix       = result.get("frame_mix", {})
-        analysis.details         = result.get("details", {})
-        #if hasattr(analysis, "details"):
-        #    analysis.details = result.get("details", {})
+        
+        # Store all smart analysis data in the details field
+        analysis.details = {
+            # Original analyzer results
+            **result.get("details", {}),
+            # Smart analysis metadata
+            "traffic_profile": result.get("traffic_profile", {}),
+            "analyzer_selection": result.get("analyzer_selection", {}),
+            "selected_analyzers": result.get("selected_analyzers", [])
+        }
         if not analysis.completed_at:
             analysis.completed_at = datetime.utcnow()
 
@@ -126,8 +135,8 @@ def get_latest(pcap_id: int, db: Session = Depends(get_db)):
         "unique_aps": a.unique_aps,
         "unique_clients": a.unique_clients,
         "ssid_count": a.ssid_count,
-        "frame_mix": getattr(a, "frame_mix", None),
-        "details": getattr(a, "details", None),
+        "frame_mix": getattr(a, "frame_mix", {}),
+        "details": getattr(a, "details", {}),
     }
 
 @router.get("/list")
@@ -176,8 +185,8 @@ def list_pcaps(db: Session = Depends(get_db)):
                 "unique_aps": ana.unique_aps,
                 "unique_clients": ana.unique_clients,
                 "ssid_count": ana.ssid_count,
-                "frame_mix": getattr(ana, "frame_mix", None),
-                "details": getattr(ana, "details", None),
+                "frame_mix": getattr(ana, "frame_mix", {}),
+                "details": getattr(ana, "details", {}),
             },
         })
     return out
@@ -233,8 +242,8 @@ def get_pcap_with_analyses(
                 "unique_aps": a.unique_aps,
                 "unique_clients": a.unique_clients,
                 "ssid_count": a.ssid_count,
-                "frame_mix": getattr(a, "frame_mix", None),
-                "details": getattr(a, "details", None),
+                "frame_mix": getattr(a, "frame_mix", {}),
+                "details": getattr(a, "details", {}),
             }
             for a in analyses
         ],

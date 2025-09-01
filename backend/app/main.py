@@ -1,9 +1,26 @@
+import logging
+import sys
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 #from app.api.routes import router
 from app.api.routers import api
 from app.core.config import settings
 from app.core.database import create_tables, test_connection
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler('/tmp/pawketeer.log')
+    ]
+)
+
+# Set specific loggers
+logging.getLogger("app.services.smart_analysis").setLevel(logging.INFO)
+logging.getLogger("app.services.analysis").setLevel(logging.INFO)
+logging.getLogger("uvicorn.access").setLevel(logging.WARNING)  # Reduce noise
 
 # Test database connection and create tables
 print("🔍 Testing database connection...")

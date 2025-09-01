@@ -2,13 +2,13 @@ from sqlalchemy import create_engine, MetaData, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
-from app.core.config import settings
+from .config import settings
 import os
 
 # Create engine with PostgreSQL-specific settings
 engine = create_engine(
     settings.database_url,
-    echo=settings.debug,  # Show SQL queries in debug mode
+    echo=False, #settings.debug,  # Show SQL queries in debug mode
     pool_pre_ping=True,   # Verify connections before use
     pool_recycle=3600,    # Recycle connections after 1 hour
 )

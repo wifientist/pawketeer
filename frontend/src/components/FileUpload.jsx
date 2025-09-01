@@ -90,7 +90,7 @@ function FileUpload({ onUploadSuccess }) {
           accept={allowedExtensions.join(",")}
           onChange={handleFileSelect}
           disabled={uploading}
-          className="block w-full max-w-xs text-sm file:mr-3 file:rounded-md file:border-0 file:bg-[--blue-500] file:px-3 file:py-2 file:text-white hover:file:bg-[--blue-600]"
+          className="block w-full max-w-xs text-sm file:mr-3 file:rounded-md file:border-0 file:bg-blue-500 file:px-3 file:py-2 file:text-white hover:file:bg-blue-600"
         />
 
         <button
@@ -100,7 +100,7 @@ function FileUpload({ onUploadSuccess }) {
             "rounded-md px-4 py-2 font-medium text-white transition",
             uploading || !file
               ? "bg-gray-300 cursor-not-allowed"
-              : "bg-[--blue-500] hover:bg-[--blue-600]",
+              : "bg-blue-500 hover:bg-blue-600",
           ].join(" ")}
         >
           {uploading ? "Uploading..." : "Upload"}

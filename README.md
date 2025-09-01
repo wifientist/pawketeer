@@ -5,19 +5,19 @@ A web application for uploading and analyzing Wi-Fi packet capture files (.pcap,
 ## 🚀 Current Status
 
 This is a minimal but working application with:
-✅ File upload functionality
-✅ Vite + React + Tailwind frontend
-✅ FastAPI backend with API endpoints
-✅ PostgreSQL data storage (via Podman)
-❌ Only basic packet analysis so far
+- ✅ File upload functionality
+- ✅ Vite + React + Tailwind frontend
+- ✅ FastAPI backend with API endpoints
+- ✅ PostgreSQL data storage (via Podman)
+- ❌ Only basic packet analysis so far
 
 ## 🛠️ Next Steps
 
-Implement actual packet parsing logic
-Add specialized analysis agents
-Extend real-world Wi-Fi analysis features
-Enhance UI/UX with additional Tailwind components
-Provide authorization mechanism
+- Implement actual packet parsing logic
+- Add specialized analysis agents
+- Extend real-world Wi-Fi analysis features
+- Enhance UI/UX with additional Tailwind components
+- Provide authorization mechanism
 
 ## ⚙️ Getting Started
 

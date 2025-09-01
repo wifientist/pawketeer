@@ -6,7 +6,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.mutable import MutableDict
 
 from datetime import datetime
-from app.core.database import Base
+from ..core.database import Base
 
 
 class PcapFile(Base):
@@ -31,6 +31,7 @@ class PcapAnalysis(Base):
     status = Column(String, default="pending")     # pending|ok|error
     error = Column(Text)
     details = Column(MutableDict.as_mutable(JSONB), nullable=True)
+    frame_mix = Column(MutableDict.as_mutable(JSONB), nullable=True)
 
     total_packets = Column(Integer, default=0)
     unique_devices = Column(Integer, default=0)
